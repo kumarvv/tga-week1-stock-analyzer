@@ -1,0 +1,7 @@
+transaction_id,date,account,source,symbol,transaction_type,quantity,price,fees,amount,currency
+TX001,2025-01-02,Individual,CSV,,DEPOSIT,0,0,0,10000.00,USD
+TX002,2025-01-03,Individual,CSV,AAPL,BUY,10,180.00,1.00,-1801.00,USD
+TX003,2025-01-06,Individual,CSV,MSFT,BUY,5,400.00,1.00,-2001.00,USD
+TX004,2025-03-14,Individual,CSV,AAPL,DIVIDEND,0,0,0,2.50,USD
+TX005,2025-04-10,Individual,CSV,AAPL,SELL,2,200.00,1.00,399.00,USD
+TX006,2025-04-15,Individual,CSV,,WITHDRAWAL,0,0,0,-500.00,USD

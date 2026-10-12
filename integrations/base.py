@@ -1,0 +1,13 @@
+from typing import Protocol
+
+class BrokerageAdapter(Protocol):
+    """Session-owned adapter. Never cache private results. No trading methods."""
+    def accounts(self) -> list[dict]: ...
+    def snapshot(self, account: dict) -> dict: ...
+    def transactions(self, account: dict, start, end) -> list[dict]: ...
+    def disconnect(self) -> None: ...
+
+class RobinhoodAdapter:
+    """Future approved OAuth/MCP adapter. Requires authorized connection and schema verification."""
+    available = False
+    message = 'Direct Robinhood stock account connection is unavailable in this configuration. Import your transactions using CSV.'
