@@ -1,0 +1,389 @@
+Build a complete Stock Portfolio Analyzer web application in the current workspace using Python and Streamlit.
+
+Implement the application, run it locally, test the core calculations, and document how to use it. Produce working code rather than only a plan.
+
+Before making changes:
+- Inspect the repository and follow applicable AGENTS.md instructions.
+- Reuse existing project conventions where practical.
+- Preserve unrelated user changes.
+- If the workspace is empty, create a well-organized Python project.
+- Make reasonable implementation decisions and proceed without asking about routine choices.
+- Ask only when missing information prevents meaningful progress.
+
+OBJECTIVE
+
+Users must be able to:
+1. Import portfolio data from E*TRADE, a supported Robinhood connection, or CSV.
+2. View portfolio metrics and configurable charts in a Summary tab.
+3. Filter and drill down into individual transactions in a Details tab.
+
+The CSV and demo experiences must work without brokerage credentials.
+
+1. TECHNOLOGY AND PROJECT STRUCTURE
+
+Use:
+- Python and Streamlit.
+- pandas for data processing.
+- Plotly for interactive charts.
+- requests and requests-oauthlib for supported integrations.
+- Decimal or an equivalent reliable approach for financial calculations.
+- pytest for calculation and import validation tests.
+
+Suggested structure, adjusted to existing repository conventions:
+
+app.py
+integrations/
+services/
+models/
+components/
+sample_data/
+tests/
+.streamlit/config.toml
+requirements.txt
+.env.example
+.gitignore
+README.md
+
+Separate UI, import validation, brokerage adapters, pricing, and financial calculations.
+
+Use one normalized internal data model across all sources.
+
+Keep private account data and tokens isolated to each user session. Do not put them in shared Streamlit caches. Public market prices may be cached separately.
+
+2. USER INTERFACE
+
+Provide three main tabs:
+- Start / Data Sources
+- Summary
+- Details
+
+Use a clean, responsive financial dashboard:
+- Wide layout.
+- Clear typography and consistent spacing.
+- Prominent metric cards.
+- Accessible colors.
+- Gains and losses indicated with both text and color.
+- Consistent currency and percentage formatting.
+- Helpful empty states, loading indicators, and actionable errors.
+
+Sidebar controls:
+- Account selection, including “All accounts.”
+- Date range.
+- Symbol filter.
+- USD base currency for the MVP.
+- Data source and connection status.
+- Last successful synchronization time.
+- Refresh and disconnect controls.
+
+Clearly label demo data.
+
+3. START / DATA SOURCES TAB
+
+Display three source cards.
+
+A. E*TRADE
+
+- Verify the current official API documentation before implementing the integration.
+- Use the documented OAuth 1.0a authorization flow.
+- Support sandbox and production configuration.
+- Read application credentials from environment variables.
+- Support verifier entry if required by the documented flow.
+- Never request or store brokerage passwords.
+- Allow account selection after authorization.
+- Retrieve available balances, positions, and transactions.
+- Handle pagination, expired authorization, rate limits, timeouts, and API failures.
+- Show synchronization progress and last successful sync.
+- Provide disconnect and revocation where supported.
+- Implement account-data access only; no trading functionality.
+
+B. Robinhood
+
+- Verify whether an official or approved integration supports OAuth and stock account data.
+- Implement only supported access for which the required credentials are available.
+- Do not invent endpoints, use private APIs, scrape the website, or collect brokerage passwords.
+- If supported access is unavailable, show:
+  “Direct Robinhood stock account connection is unavailable in this configuration. Import your transactions using CSV.”
+- Provide a CSV import shortcut.
+- Do not substitute crypto account access for stock account access.
+- Keep a documented adapter interface for a future supported integration.
+- Do not display a mock connection as a working connection.
+
+C. CSV Upload
+
+- Accept UTF-8 CSV files with a configurable size limit.
+- Provide a downloadable example file and schema instructions.
+- Preview rows before import.
+- Support column mapping for different header names.
+- Validate required fields, dates, numeric values, symbols, currencies, and transaction types.
+- Show row-specific errors.
+- Never silently discard invalid rows.
+- Allow the user to correct the file or explicitly import valid rows only.
+- Detect duplicates by source, account, and transaction ID.
+- Make repeated imports idempotent.
+- Show accepted, rejected, and duplicate row counts.
+- Include a “Load demo portfolio” button.
+
+4. CSV SCHEMA AND SAMPLE FILE
+
+Use:
+
+transaction_id,date,account,source,symbol,transaction_type,quantity,price,fees,amount,currency
+
+Create a downloadable sample containing:
+
+transaction_id,date,account,source,symbol,transaction_type,quantity,price,fees,amount,currency
+TX001,2025-01-02,Individual,CSV,,DEPOSIT,0,0,0,10000.00,USD
+TX002,2025-01-03,Individual,CSV,AAPL,BUY,10,180.00,1.00,-1801.00,USD
+TX003,2025-01-06,Individual,CSV,MSFT,BUY,5,400.00,1.00,-2001.00,USD
+TX004,2025-03-14,Individual,CSV,AAPL,DIVIDEND,0,0,0,2.50,USD
+TX005,2025-04-10,Individual,CSV,AAPL,SELL,2,200.00,1.00,399.00,USD
+TX006,2025-04-15,Individual,CSV,,WITHDRAWAL,0,0,0,-500.00,USD
+
+Document and enforce:
+- Dates: YYYY-MM-DD.
+- Stable transaction IDs, unique within source and account.
+- Supported types: BUY, SELL, DIVIDEND, DEPOSIT, WITHDRAWAL, FEE.
+- Positive quantities for BUY and SELL; fractional shares supported.
+- Nonnegative prices and fees.
+- amount represents signed net cash movement.
+- BUY amount = -(quantity × price + fees).
+- SELL amount = quantity × price - fees.
+- DIVIDEND and DEPOSIT amounts are positive.
+- WITHDRAWAL and FEE amounts are negative.
+- Fees included in trades must not be deducted twice.
+- Symbols required for BUY, SELL, and DIVIDEND.
+- Symbols optional for cash-only transactions.
+- USD only for the MVP; explain unsupported currencies.
+- Validate amount consistency using a documented rounding tolerance.
+- Preserve input order when transactions share a date.
+
+Support optional opening positions:
+
+account,symbol,quantity,total_cost_basis,as_of_date,currency
+
+Provide an opening cash input per account.
+
+Explain that opening positions and cash are required when history does not start from an empty account. Do not infer missing cost basis.
+
+5. SUMMARY TAB
+
+Display metric cards for:
+- Total portfolio value: priced holdings plus cash.
+- Holdings market value.
+- Cash balance.
+- Remaining cost basis.
+- Unrealized gain/loss in dollars and percent.
+- Realized gain/loss for the selected period.
+- Dividend income for the selected period.
+- Net external contributions for the selected period.
+
+Clearly distinguish current/as-of metrics from activity metrics for the selected date range.
+
+If reliable historical data is available, also display:
+- Portfolio value change.
+- A documented investment return adjusted for external cash flows.
+
+Do not label simple balance changes as investment returns. Hide unsupported metrics or show N/A with an explanation.
+
+Display at least two interactive chart panels. Let users choose the dataset and an appropriate chart type.
+
+Allocation panel:
+- Holdings by symbol: pie, donut, or bar.
+- Optional cash inclusion.
+- Top holdings and an “Other” category.
+
+Performance/activity panel:
+- Portfolio value over time: line or area.
+- Unrealized gain/loss by symbol: bar.
+- Monthly dividends: bar or line.
+- Monthly deposits and withdrawals: grouped bar.
+
+Offer only chart types appropriate for the dataset.
+
+Include hover details, legends, responsive sizing, and export where available.
+
+Below the charts, display a holdings table:
+- Symbol.
+- Quantity.
+- Average remaining cost per share.
+- Current price.
+- Market value.
+- Remaining cost basis.
+- Unrealized gain/loss.
+- Unrealized gain/loss percentage.
+- Portfolio weight.
+- Quote timestamp.
+
+Provide an explicit way to open a holding’s transactions in Details.
+
+6. DETAILS TAB
+
+Display a searchable, sortable transaction table with:
+- Transaction ID.
+- Date.
+- Account.
+- Source.
+- Symbol.
+- Transaction type.
+- Quantity.
+- Price.
+- Fees.
+- Signed cash amount.
+- Currency.
+
+Filters:
+- Date range.
+- Account.
+- Symbol.
+- Transaction type.
+- Source.
+- Free-text search.
+
+Include:
+- Filtered row count.
+- Cash-flow totals.
+- Filtered CSV download.
+- Transaction detail panel.
+- Symbol transaction history.
+- FIFO lot breakdown for sales.
+- Realized gain/loss per sale when cost basis is available.
+- Data-quality and reconciliation flags.
+
+Explain that summed transaction cash amounts represent cash flow, not profit.
+
+7. FINANCIAL CALCULATIONS
+
+Implement and document:
+- Holdings from transactions and opening positions.
+- Cash from opening cash and signed cash movements.
+- FIFO realized gains, calculated separately by account and symbol.
+- Purchase fees included in acquisition cost.
+- Sale fees deducted from proceeds.
+- Remaining cost basis after partial sales.
+- Unrealized gain/loss = market value - remaining cost basis.
+- Unrealized gain/loss percentage = gain/loss / remaining cost basis.
+- N/A for zero denominators.
+- Net external contributions = deposits minus withdrawals.
+- Dividends tracked separately from trading gains.
+
+Use the complete available history to establish positions and cost basis before filtering reporting periods.
+
+The MVP supports long-only stocks and ETFs.
+- Prevent or flag sales exceeding available shares.
+- Detect and flag unsupported options, shorts, transfers, splits, and other corporate actions.
+- Do not silently treat unsupported activity as ordinary trades.
+
+For incomplete history:
+- Prefer reliable broker-provided positions and cost basis where available.
+- Show differences between reconstructed and broker-reported holdings.
+- Mark unreliable calculations as incomplete or unavailable.
+- Do not fabricate missing balances, basis, or performance.
+
+8. MARKET DATA
+
+Use a configurable provider adapter.
+
+- Prefer brokerage quotes where supported.
+- Verify and document any alternative provider’s API and limitations.
+- Label delayed prices and quote timestamps.
+- Cache public prices with a documented expiration.
+- Handle missing prices without substituting zero.
+- Mark totals as incomplete when holdings cannot be priced.
+- Support manual price entry for offline and CSV use.
+- Identify manual prices in the UI.
+
+Historical charts must:
+- Use shares held on each historical date, historical prices, and cash balances.
+- Avoid applying current holdings backward through history.
+- Use consistent corporate-action and price-adjustment assumptions.
+- Remain unavailable when required history is missing.
+
+Demo mode may use deterministic synthetic prices, clearly labeled as demo data.
+
+9. SECURITY AND DATA HANDLING
+
+- Use environment variables for secrets.
+- Include placeholder names in .env.example.
+- Exclude .env, tokens, and private imported data from Git.
+- Never expose secrets in logs, UI, downloads, or error messages.
+- Avoid persisting financial data by default.
+- Provide “Clear imported data.”
+- Keep brokerage data out of shared caches.
+- Use timeouts and bounded retries.
+- Sanitize user-controlled text during CSV export to prevent spreadsheet formula execution.
+- State that the app provides informational analytics and does not execute trades.
+
+10. LOCAL DEVELOPMENT AND VS CODE
+
+Provide instructions for:
+- Creating and activating a Python virtual environment.
+- Installing dependencies.
+- Configuring environment variables.
+- Starting the app with:
+  python -m streamlit run app.py
+- Running tests with:
+  python -m pytest
+- Using E*TRADE sandbox credentials.
+- Importing the example CSV.
+- Understanding calculation definitions and limitations.
+
+If useful, add a VS Code task for launching Streamlit using the selected Python interpreter. Avoid machine-specific paths.
+
+Use the project’s existing dependency manager when present; otherwise use requirements.txt.
+
+11. TESTS AND ACCEPTANCE CRITERIA
+
+Add meaningful tests for:
+- Partial FIFO sales.
+- Multiple lots.
+- Account isolation.
+- Fractional shares.
+- Trade fees.
+- Dividends.
+- Deposits and withdrawals.
+- Duplicate imports.
+- Invalid CSV rows.
+- Missing prices.
+- Incomplete history.
+- Sales exceeding available shares.
+
+For the sample CSV, verify:
+- AAPL quantity: 8.
+- MSFT quantity: 5.
+- Cash: $6,099.50.
+- Remaining AAPL cost basis: $1,440.80.
+- AAPL realized gain: $38.80.
+
+The app must:
+- Start locally.
+- Work without credentials in CSV and demo modes.
+- Import the example file successfully.
+- Prevent duplicate imports.
+- Display actionable validation errors.
+- Show accurate financial metrics.
+- Provide two configurable interactive charts.
+- Support transaction filtering, drill-down, and export.
+- Handle unavailable integrations gracefully.
+- Keep private data isolated between sessions.
+
+12. EXECUTION AND HANDOFF
+
+Implement in this order:
+1. Normalized models and financial calculations.
+2. CSV validation and demo data.
+3. Start, Summary, and Details UI.
+4. Pricing adapter and manual prices.
+5. Supported brokerage integrations.
+6. Tests, local startup verification, and documentation.
+
+Run the relevant tests and fix failures. Launch the application and inspect the UI when browser tooling is available. If verification is blocked, state the exact limitation.
+
+At completion, report:
+- What was implemented.
+- Files or modules worth reviewing.
+- How to run the application.
+- Tests and startup checks performed.
+- Which brokerage integrations are live-tested, sandbox-tested, or unverified.
+- Any remaining limitations or required credentials.
+
+Do not claim an integration or test succeeded unless you verified it.
